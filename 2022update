@@ -1,0 +1,37 @@
+Sub CleanUpAfterChangingAuthorDateToNumberedStyle_v2()
+Dim iStart As Long, iEnd As Long
+Dim rPrevChar As Range, rNextChar As Range
+Dim uUndo As UndoRecord
+Set uUndo = Application.UndoRecord
+uUndo.StartCustomRecord ("Clean up citations after converting notes to author-date citations") 'Make the macro appear as a single operation on the Undo list
+Dim fField As Field, rRange As Range, strPrevChar As String
+Dim rCurrentPosition As Range
+Set rCurrentPosition = Selection.Range
+For Each fField In ActiveDocument.Fields
+    If Left(fField.Code, Len(ZoteroFieldIdentifier)) = ZoteroFieldIdentifier Then 'Check if this is a Zotero item field
+        fField.Select
+        Set rRange = Selection.Range
+            If rRange.Start > ActiveDocument.Range.Start Then
+                Set rPrevChar = ActiveDocument.Range(rRange.Start - 1, rRange.Start)
+                If rPrevChar.Text = " " Or rPrevChar.Text = ChrW(160) Then rPrevChar.Delete
+            End If
+            If rRange.End < ActiveDocument.Range.End Then
+                Set rNextChar = ActiveDocument.Range(rRange.End, rRange.End + 1)
+                If rNextChar.Text Like PunctuationPrecedingNoteReference Then
+                    Do While rNextChar.End < ActiveDocument.Range.End
+                    If ActiveDocument.Range(rNextChar.End, rNextChar.End + 1).Text Like PunctuationPrecedingNoteReference Then
+                        rNextChar.End = rNextChar.End + 1 'if there is more than one punctuation sign following the note reference, place them all before the reference
+                    Else
+                        Exit Do
+                    End If
+                    Loop
+                    rRange.InsertBefore rNextChar.Text
+                    rNextChar.Delete
+                End If
+            End If
+    End If
+Skip:
+Next fField
+rCurrentPosition.Select
+uUndo.EndCustomRecord
+End Sub
